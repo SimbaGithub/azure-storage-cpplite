@@ -61,4 +61,3 @@ build.release
 *.orig
 
 # Test framework
-test/catch2
