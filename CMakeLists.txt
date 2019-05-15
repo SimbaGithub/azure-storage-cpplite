@@ -4,6 +4,8 @@ project(azurestoragelite)
 
 option(BUILD_TESTS "Build test codes" OFF)
 option(BUILD_SAMPLES "Build sample codes" OFF)
+option(FORCE_SHARED_CRT "If enabled, will unconditionally link the standard libraries in dynamically, otherwise the standard library will be linked in based on the BUILD_SHARED_LIBS setting" ON)
+
 set(OPENSSL_VERSION_NUMBER  0x11100000L)
 
 set(AZURE_STORAGE_LITE_HEADER
@@ -231,9 +233,12 @@ else()
   endif()
   add_definitions(-DUSE_OPENSSL)
   set(OPENSSL_MSVC_STATIC_RT "true")
-  if (BUILD_WITH_MT)
+  if (FORCE_SHARED_CRT)
+    set(CMAKE_CXX_FLAGS_RELEASE "/MD")
+    set(CMAKE_CXX_FLAGS_DEBUG "/MDd")
+  else ()
     set(CMAKE_CXX_FLAGS_RELEASE "/MT")
-    set(CMAKE_CXX_FLAGS_DEBUG "/MT")
+    set(CMAKE_CXX_FLAGS_DEBUG "/MTd")
   endif()
   #adding extra dependency libraries for windows
   set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} rpcrt4 ws2_32 wldap32 crypt32 normaliz)
