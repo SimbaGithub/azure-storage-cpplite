@@ -398,7 +398,7 @@ namespace azure {  namespace storage_lite {
             }
         }
 
-        void blob_client_wrapper::upload_block_blob_from_stream(const std::string &container, const std::string blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata, size_t streamlen)
+        void blob_client_wrapper::upload_block_blob_from_stream(const std::string &container, const std::string blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata, unsigned long long streamlen)
         {
             if(!is_valid())
             {
@@ -413,7 +413,7 @@ namespace azure {  namespace storage_lite {
 
             try
             {
-                AZURE_STORAGE_API std::future<storage_outcome<void>> task;
+                std::future<storage_outcome<void>> task;
                 if(streamlen == blob_client_wrapper::NOT_USER_DEFINED_STREAMLEN)
                     task = m_blobClient->upload_block_blob_from_stream(container, blob, is, metadata);
                 else
