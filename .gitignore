@@ -53,6 +53,7 @@ dkms.conf
 # Cmake
 build
 build.release
+cmake-*
 
 # VS folder
 .vs/
