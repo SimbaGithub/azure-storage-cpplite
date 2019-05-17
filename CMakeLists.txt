@@ -114,10 +114,7 @@ set(AZURE_STORAGE_LITE_SOURCE
 if(APPLE)
   option(USE_OPENSSL "Use OpenSSL instead of GnuTLS" ON)
   add_definitions(-DUSE_OPENSSL)
-  find_package(CURL REQUIRED)
-  # Adding default brew install DIR for openssl
-  set(OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR} "/usr/local/opt/openssl/")
-  find_package(OpenSSL REQUIRED)
+  find_package(Threads REQUIRED)
   include_directories(${PROJECT_SOURCE_DIR}/include ${CURL_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR} ${EXTRA_INCLUDE})
   set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} system)
   set(CMAKE_MACOSX_RPATH ON)
