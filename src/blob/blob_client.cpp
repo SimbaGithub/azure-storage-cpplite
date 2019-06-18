@@ -285,6 +285,19 @@ std::future<storage_outcome<void>> blob_client::upload_block_from_stream(const s
     return async_executor<void>::submit(m_account, request, http, m_context);
 }
 
+std::future<storage_outcome<void>> blob_client::upload_block_from_stream(const std::string &container, const std::string &blob, const std::string &blockid, std::istream &is, unsigned long long streamlen)
+{
+    auto http = m_client->get_handle();
+
+    auto request = std::make_shared<put_block_request>(container, blob, blockid);
+
+    request->set_content_length(streamlen);
+
+    http->set_input_stream(storage_istream(is));
+
+    return async_executor<void>::submit(m_account, request, http, m_context);
+}
+
 std::future<storage_outcome<void>> blob_client::put_block_list(const std::string &container, const std::string &blob, const std::vector<put_block_list_request_base::block_item> &block_list, const std::vector<std::pair<std::string, std::string>> &metadata)
 {
     auto http = m_client->get_handle();

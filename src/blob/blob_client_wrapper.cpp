@@ -12,6 +12,7 @@
 #include "blob/blob_client.h"
 #include "logging.h"
 #include "storage_errno.h"
+#include "base64.h"
 
 #pragma push_macro("max")
 #undef max
@@ -64,53 +65,6 @@ namespace azure {  namespace storage_lite {
         };
         static mempool mpool;
         off_t get_file_size(const char* path);
-
-        static const char* _base64_enctbl = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-        std::string to_base64(const char* base, size_t length)
-        {
-            std::string result;
-            for(int offset = 0; length - offset >= 3; offset += 3)
-            {
-                const char* ptr = base + offset;
-                unsigned char idx0 = ptr[0] >> 2;
-                unsigned char idx1 = ((ptr[0]&0x3)<<4)| ptr[1] >> 4;
-                unsigned char idx2 = ((ptr[1]&0xF)<<2)| ptr[2] >> 6;
-                unsigned char idx3 = ptr[2]&0x3F;
-                result.push_back(_base64_enctbl[idx0]);
-                result.push_back(_base64_enctbl[idx1]);
-                result.push_back(_base64_enctbl[idx2]);
-                result.push_back(_base64_enctbl[idx3]);
-            }
-            switch(length % 3)
-            {
-                case 1:
-                {
-
-                    const char* ptr = base + length - 1;
-                    unsigned char idx0 = ptr[0] >> 2;
-                    unsigned char idx1 = ((ptr[0]&0x3)<<4);
-                    result.push_back(_base64_enctbl[idx0]);
-                    result.push_back(_base64_enctbl[idx1]);
-                    result.push_back('=');
-                    result.push_back('=');
-                    break;
-                }
-                case 2:
-                {
-
-                    const char* ptr = base + length - 2;
-                    unsigned char idx0 = ptr[0] >> 2;
-                    unsigned char idx1 = ((ptr[0]&0x3)<<4)| ptr[1] >> 4;
-                    unsigned char idx2 = ((ptr[1]&0xF)<<2);
-                    result.push_back(_base64_enctbl[idx0]);
-                    result.push_back(_base64_enctbl[idx1]);
-                    result.push_back(_base64_enctbl[idx2]);
-                    result.push_back('=');
-                    break;
-                }
-            }
-            return result;
-        }
 
         blob_client_wrapper blob_client_wrapper::blob_client_wrapper_init(const std::string &account_name, const std::string &account_key, const std::string &sas_token, const unsigned int concurrency)
         {
@@ -278,11 +232,6 @@ namespace azure {  namespace storage_lite {
                 errno = client_not_init;
                 return std::vector<list_containers_item>();
             }
-            if(prefix.length() == 0)
-            {
-                errno = invalid_parameters;
-                return std::vector<list_containers_item>();
-            }
 
             try
             {
@@ -438,6 +387,168 @@ namespace azure {  namespace storage_lite {
             }
         }
 
+        void blob_client_wrapper::multipart_upload_block_blob_from_stream(const std::string &container, const std::string blob, std::istream &ifs, const std::vector<std::pair<std::string, std::string>> &metadata, unsigned long long streamlen, size_t parallel)
+        {
+            if(!is_valid())
+            {
+                errno = client_not_init;
+                return;
+            }
+
+            off_t fileSize = streamlen;
+            if(fileSize < 0)
+            {
+                /*errno already set by get_file_size*/
+                return;
+            }
+
+            if(fileSize <= 64*1024*1024)
+            {
+                upload_block_blob_from_stream(container, blob, ifs, metadata, streamlen);
+                // upload_block_blob_from_stream sets errno
+                return;
+            }
+
+            int result = 0;
+
+            //support blobs up to 4.77TB = if file is larger, return EFBIG error
+            //need to round to the nearest multiple of 4MB for efficiency
+            if(fileSize > MAX_BLOB_SIZE)
+            {
+                errno = EFBIG;
+                logger::log(log_level::error, "Exceeds max file upload size 4.77TB. container = %s, blob = %s, Upload file size= %lu.", container.c_str(), blob.c_str(), streamlen);
+                return;
+            }
+
+            long long block_size = MIN_UPLOAD_CHUNK_SIZE;
+
+            if(fileSize > (50000 * MIN_UPLOAD_CHUNK_SIZE)) // fileSize > 50000 * 16 * 1024 * 1024 = 781.25 GB
+            {
+                long long min_block = fileSize / 50000;
+                int remainder = min_block % 4*1024*1024;
+                min_block += 4*1024*1024 - remainder;
+                block_size = min_block < MIN_UPLOAD_CHUNK_SIZE ? MIN_UPLOAD_CHUNK_SIZE : min_block;
+            }
+
+            if(!ifs)
+            {
+                logger::log(log_level::error, "Failed to open the input stream in %s.  errno = %d, in %s.", errno, __FUNCTION__);
+                errno = unknown_error;
+                return;
+            }
+
+            std::vector<put_block_list_request_base::block_item> block_list;
+            std::deque<std::future<int>> task_list;
+            std::mutex mutex;
+            std::condition_variable cv;
+            std::mutex cv_mutex;
+
+            for(long long offset = 0, idx = 0; offset < fileSize; offset += block_size, ++idx)
+            {
+                // control the number of submitted jobs.
+                while(task_list.size() > m_concurrency)
+                {
+                    auto r = task_list.front().get();
+                    task_list.pop_front();
+                    if (0 == result) {
+                        result = r;
+                    }
+                }
+                if (0 != result) {
+                    break;
+                }
+                long long length = block_size;
+                if(offset + length > fileSize)
+                {
+                    length = fileSize - offset;
+                }
+
+                char* buffer = (char*)malloc(static_cast<size_t>(block_size)); // This cast is save because block size should always be lower than 4GB
+                if (!buffer) {
+                    result = 12;
+                    break;
+                }
+                if(!ifs.read(buffer, length))
+                {
+                    logger::log(log_level::error, "Failed to read from input stream in multipart_upload_block_blob_from_stream. Container = %s, blob = %s, offset = %lld, length = %d.", container.c_str(), blob.c_str(), offset, length);
+                    result = unknown_error;
+                    break;
+                }
+                std::string raw_block_id = std::to_string(idx);
+                //pad the string to length of 6.
+                raw_block_id.insert(raw_block_id.begin(), 12 - raw_block_id.length(), '0');
+                const std::string block_id(to_base64((const unsigned char*)((raw_block_id + get_uuid()).c_str()), 64));
+                put_block_list_request_base::block_item block;
+                block.id = block_id;
+                block.type = put_block_list_request_base::block_type::uncommitted;
+                block_list.push_back(block);
+                auto single_put = std::async(std::launch::async, [block_id, this, buffer, length, &container, &blob, &parallel, &mutex, &cv_mutex, &cv](){
+                    {
+                        std::unique_lock<std::mutex> lk(cv_mutex);
+                        cv.wait(lk, [&parallel, &mutex]() {
+                            std::lock_guard<std::mutex> lock(mutex);
+                            if(parallel > 0)
+                            {
+                                --parallel;
+                                return true;
+                            }
+                            return false;
+                        });
+                    }
+
+                    std::istringstream in;
+                    in.rdbuf()->pubsetbuf(buffer, length);
+                    const auto blockResult = m_blobClient->upload_block_from_stream(container, blob, block_id, in, length).get();
+                    free(buffer);
+
+                    {
+                        std::lock_guard<std::mutex> lock(mutex);
+                        ++parallel;
+                        cv.notify_one();
+                    }
+
+                    int result = 0;
+                    if(!blockResult.success())
+                    {
+                        result = std::stoi(blockResult.error().code);
+                        if (0 == result) {
+                            // It seems that timeouted requests has no code setup
+                            result = 503;
+                        }
+                    }
+                    return result;
+                });
+                task_list.push_back(std::move(single_put));
+            }
+
+            // wait for the rest of tasks
+            for(auto &task: task_list)
+            {
+                const auto r = task.get();
+                if(0 == result)
+                {
+                    result = r;
+                }
+            }
+            if (0 != result) {
+            }
+            if(result == 0)
+            {
+                const auto r = m_blobClient->put_block_list(container, blob, block_list, metadata).get();
+                if(!r.success())
+                {
+                    result = std::stoi(r.error().code);
+                    logger::log(log_level::error, "put_block_list failed in multipart_upload_block_blob_from_stream.  error code = %d, container = %s, blob = %s.", result, container.c_str(), blob.c_str());
+                    if (0 == result) {
+                        result = unknown_error;
+                    }
+                }
+            }
+
+            //ifs.close();
+            errno = result;
+        }
+
         void blob_client_wrapper::upload_file_to_blob(const std::string &sourcePath, const std::string &container, const std::string blob, const std::vector<std::pair<std::string, std::string>> &metadata, size_t parallel)
         {
             if(!is_valid())
@@ -533,7 +644,8 @@ namespace azure {  namespace storage_lite {
                 std::string raw_block_id = std::to_string(idx);
                 //pad the string to length of 6.
                 raw_block_id.insert(raw_block_id.begin(), 12 - raw_block_id.length(), '0');
-                const std::string block_id(to_base64((raw_block_id + get_uuid()).c_str(), 64));
+                const std::string block_id_un_base64 = raw_block_id + get_uuid();
+                const std::string block_id(to_base64(reinterpret_cast<const unsigned char*>(block_id_un_base64.c_str()), block_id_un_base64.size()));
                 put_block_list_request_base::block_item block;
                 block.id = block_id;
                 block.type = put_block_list_request_base::block_type::uncommitted;
