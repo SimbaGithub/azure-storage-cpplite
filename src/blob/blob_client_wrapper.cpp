@@ -860,6 +860,29 @@ namespace azure {  namespace storage_lite {
             return;
         }
 
+        void blob_client_wrapper::get_chunk(const std::string &container, const std::string &blob, unsigned long long offset, unsigned long long size, std::string &origEtag, std::shared_ptr<std::stringstream> strstream)
+        {
+            auto chunk = m_blobClient->get_chunk_to_stream_sync(container, blob, offset, size, *strstream);
+            if(!chunk.success())
+            {
+                // Looks like the blob has been replaced by smaller one - ask user to retry.
+                if (constants::code_request_range_not_satisfiable == chunk.error().code) {
+                    errno = EAGAIN;
+                }
+                errno = std::stoi(chunk.error().code);
+                return;
+            }
+            else{
+                //Chunk download is successful
+               if( origEtag.compare(chunk.response().etag) != 0 )
+               {
+                   errno = EAGAIN;
+               }
+            }
+            errno = 0;
+            return;
+        }
+
         blob_property blob_client_wrapper::get_blob_property(const std::string &container, const std::string &blob)
         {
             if(!is_valid())
