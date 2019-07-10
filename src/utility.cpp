@@ -21,6 +21,7 @@ namespace azure {  namespace storage_lite {
     {
         std::string res;
 #ifdef _WIN32
+#pragma comment(lib, "rpcrt4.lib")
         UUID uuid;
         UuidCreate(&uuid);
         char* uuid_cstr = nullptr;

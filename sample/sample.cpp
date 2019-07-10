@@ -1,8 +1,9 @@
-
 #include <string>
 #include <chrono>
 #include <thread>
 #include <assert.h>
+#include <fstream>
+#include <sys/stat.h>
 
 #include "storage_credential.h"
 #include "storage_account.h"
@@ -11,6 +12,100 @@
 
 using namespace azure::storage_lite;
 
+void checkstatus()
+{
+    if(errno == 0)
+    {
+        printf("Success\n");
+    }
+    else
+    {
+        printf("Fail\n");
+    }
+}
+
+int main()
+{
+
+    char caBundleFile[100]={0};
+    strcpy(caBundleFile, "/etc/pki/tls/cacert.pem");
+
+    std::ifstream infile; 
+    infile.open("/home/vreddy/GetCredentials/credentials.conf");
+    std::string account_name = "";
+    infile >> account_name ;
+
+    std::string endpoint = account_name + ".blob.core.windows.net";
+    std::cout << "Endpoint: " << endpoint << std::endl;
+
+    int parallel=10;
+
+    std::string sas_key = "";
+    infile >> sas_key ;
+    std::cout << "SAS_KEY: " << sas_key << std::endl;
+    std::shared_ptr<azure::storage_lite::storage_credential>  cred = std::make_shared<azure::storage_lite::shared_access_signature_credential>(sas_key);
+    std::shared_ptr<azure::storage_lite::storage_account> account = std::make_shared<azure::storage_lite::storage_account>(account_name, cred, true, endpoint);
+
+    auto bclient = std::make_shared<azure::storage_lite::blob_client>(account, parallel, caBundleFile);
+    auto bc= new azure::storage_lite::blob_client_wrapper(bclient);
+
+    std::string containerName = "";
+    infile >> containerName ;
+    std::cout << "Container Name: " << containerName << std::endl;
+
+    std::string blobName = "uploadlog4.txt";
+    std::string uploadFileName = "uploadlog4.txt";
+    std::string downloadFileName = "downloadtext.log";
+
+    std::cout << "blob exists" << std::endl;
+
+    std::cout << "Start upload Blob: " << blobName << std::endl;
+
+    std::vector<std::pair<std::string, std::string>> userMetadata;
+
+    bc->upload_file_to_blob(blobName, containerName, blobName, userMetadata);
+
+    if (errno == 0)
+        std::cout << "Upload successful: " << std::endl;
+    else
+        std::cout << "error Upload FAILED: Errno " << errno << std::endl;
+
+    if (bc->blob_exists(containerName,blobName))
+    {
+        std::cout << "blob exists" << std::endl ;
+    }
+    else{
+        std::cout << "blob does not exists" << std::endl ;
+    }
+
+    auto blobProperty = bc->get_blob_property(containerName, blobName);
+    if(errno == 0)
+    {
+        if(blobProperty.valid())
+            std::cout <<"Size of Blob: " << blobProperty.size << std::endl;
+        else
+            std::cout <<"Invalid blob property" << std::endl ;
+    }
+
+    time_t last_modified;
+    std::cout <<"Start blob download" << std::endl;
+    bc->download_blob_to_file(containerName, blobName, downloadFileName, last_modified);
+    if(errno == 0)
+        std::cout <<"Download successful: " << std::endl;
+    else
+        std::cout <<"error download FAILED: Errno: " << errno << std::endl;
+
+    std::cout <<"Delete Blob: " << blobName  << " in Container " << containerName << std::endl;
+    bc->delete_blob(containerName, blobName);
+    if(errno == 0)
+        std::cout <<"Delete successful: " << std::endl;
+    else
+        std::cout <<"error Delete FAILED: " << std::endl;
+    return 0;
+}
+
+
+/* 
 void checkstatus()
 {
     if(errno == 0)
@@ -104,3 +199,4 @@ int main()
     //assert(errno == 0);
     //std::this_thread::sleep_for(std::chrono::seconds(5));
 }
+*/
