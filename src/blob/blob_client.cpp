@@ -295,6 +295,10 @@ std::future<storage_outcome<void>> blob_client::upload_block_from_stream(const s
 
     http->set_input_stream(storage_istream(is));
 
+    http->set_is_stream_length();
+
+    http->set_input_stream_length(streamlen);
+
     return async_executor<void>::submit(m_account, request, http, m_context);
 }
 
