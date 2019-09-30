@@ -468,6 +468,8 @@ namespace azure {  namespace storage_lite {
                     result = 12;
                     break;
                 }
+
+		memset(buffer, 0, block_size);
                 if(!ifs.read(buffer, length))
                 {
                     logger::log(log_level::error, "Failed to read from input stream in multipart_upload_block_blob_from_stream. Container = %s, blob = %s, offset = %lld, length = %d.", container.c_str(), blob.c_str(), offset, length);
@@ -497,7 +499,7 @@ namespace azure {  namespace storage_lite {
                     }
 
                     std::istringstream in;
-                    in.rdbuf()->pubsetbuf(buffer, length);
+		    in.str(buffer);
                     const auto blockResult = m_blobClient->upload_block_from_stream(container, blob, block_id, in, length).get();
                     free(buffer);
 
