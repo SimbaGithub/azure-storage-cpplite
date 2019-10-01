@@ -402,7 +402,7 @@ namespace azure {  namespace storage_lite {
                 return;
             }
 
-            if(fileSize <= 64*1024*1024)
+            if(fileSize <= 20*1024*1024)
             {
                 upload_block_blob_from_stream(container, blob, ifs, metadata, streamlen);
                 // upload_block_blob_from_stream sets errno
@@ -464,12 +464,11 @@ namespace azure {  namespace storage_lite {
                 }
 
                 char* buffer = (char*)malloc(static_cast<size_t>(block_size)); // This cast is save because block size should always be lower than 4GB
+                memset(buffer, 0, block_size);
                 if (!buffer) {
                     result = 12;
                     break;
                 }
-
-		memset(buffer, 0, block_size);
                 if(!ifs.read(buffer, length))
                 {
                     logger::log(log_level::error, "Failed to read from input stream in multipart_upload_block_blob_from_stream. Container = %s, blob = %s, offset = %lld, length = %d.", container.c_str(), blob.c_str(), offset, length);
@@ -499,7 +498,8 @@ namespace azure {  namespace storage_lite {
                     }
 
                     std::istringstream in;
-		    in.str(buffer);
+                    //in.rdbuf()->pubsetbuf(buffer, length);
+                    in.str(buffer);
                     const auto blockResult = m_blobClient->upload_block_from_stream(container, blob, block_id, in, length).get();
                     free(buffer);
 
@@ -633,6 +633,7 @@ namespace azure {  namespace storage_lite {
                 }
 
                 char* buffer = (char*)malloc(static_cast<size_t>(block_size)); // This cast is save because block size should always be lower than 4GB
+                memset(buffer,0, block_size);
                 if (!buffer) {
                     result = 12;
                     break;
@@ -668,7 +669,8 @@ namespace azure {  namespace storage_lite {
 
                         std::istringstream in;
                         in.rdbuf()->pubsetbuf(buffer, length);
-                        const auto blockResult = m_blobClient->upload_block_from_stream(container, blob, block_id, in).get();
+                        //in.str(buffer);
+                        const auto blockResult = m_blobClient->upload_block_from_stream(container, blob, block_id, in, length).get();
                         free(buffer);
 
                         {
