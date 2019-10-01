@@ -402,7 +402,7 @@ namespace azure {  namespace storage_lite {
                 return;
             }
 
-            if(fileSize <= 20*1024*1024)
+            if(fileSize <= 64*1024*1024)
             {
                 upload_block_blob_from_stream(container, blob, ifs, metadata, streamlen);
                 // upload_block_blob_from_stream sets errno
@@ -498,8 +498,7 @@ namespace azure {  namespace storage_lite {
                     }
 
                     std::istringstream in;
-                    //in.rdbuf()->pubsetbuf(buffer, length);
-                    in.str(buffer);
+                    in.rdbuf()->pubsetbuf(buffer, length);
                     const auto blockResult = m_blobClient->upload_block_from_stream(container, blob, block_id, in, length).get();
                     free(buffer);
 
@@ -669,7 +668,6 @@ namespace azure {  namespace storage_lite {
 
                         std::istringstream in;
                         in.rdbuf()->pubsetbuf(buffer, length);
-                        //in.str(buffer);
                         const auto blockResult = m_blobClient->upload_block_from_stream(container, blob, block_id, in, length).get();
                         free(buffer);
 
