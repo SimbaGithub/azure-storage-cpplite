@@ -632,7 +632,6 @@ namespace azure {  namespace storage_lite {
                 }
 
                 char* buffer = (char*)malloc(static_cast<size_t>(block_size)); // This cast is save because block size should always be lower than 4GB
-                memset(buffer,0, block_size);
                 if (!buffer) {
                     result = 12;
                     break;
@@ -668,7 +667,7 @@ namespace azure {  namespace storage_lite {
 
                         std::istringstream in;
                         in.rdbuf()->pubsetbuf(buffer, length);
-                        const auto blockResult = m_blobClient->upload_block_from_stream(container, blob, block_id, in, length).get();
+                        const auto blockResult = m_blobClient->upload_block_from_stream(container, blob, block_id, in).get();
                         free(buffer);
 
                         {
