@@ -464,6 +464,7 @@ namespace azure {  namespace storage_lite {
                 }
 
                 char* buffer = (char*)malloc(static_cast<size_t>(block_size)); // This cast is save because block size should always be lower than 4GB
+                memset(buffer, 0, block_size);
                 if (!buffer) {
                     result = 12;
                     break;
@@ -477,7 +478,7 @@ namespace azure {  namespace storage_lite {
                 std::string raw_block_id = std::to_string(idx);
                 //pad the string to length of 6.
                 raw_block_id.insert(raw_block_id.begin(), 12 - raw_block_id.length(), '0');
-                const std::string block_id(to_base64((const unsigned char*)((raw_block_id + get_uuid()).c_str()), 64));
+                const std::string block_id(to_base64(reinterpret_cast<const unsigned char*>(raw_block_id.c_str()), raw_block_id.size()));
                 put_block_list_request_base::block_item block;
                 block.id = block_id;
                 block.type = put_block_list_request_base::block_type::uncommitted;
@@ -496,9 +497,7 @@ namespace azure {  namespace storage_lite {
                         });
                     }
 
-                    std::istringstream in;
-                    in.rdbuf()->pubsetbuf(buffer, length);
-                    const auto blockResult = m_blobClient->upload_block_from_stream(container, blob, block_id, in, length).get();
+		    const auto blockResult = m_blobClient->upload_block_from_buffer(container, blob, block_id, buffer, length).get();
                     free(buffer);
 
                     {
@@ -530,8 +529,7 @@ namespace azure {  namespace storage_lite {
                     result = r;
                 }
             }
-            if (0 != result) {
-            }
+
             if(result == 0)
             {
                 const auto r = m_blobClient->put_block_list(container, blob, block_list, metadata).get();
@@ -545,7 +543,6 @@ namespace azure {  namespace storage_lite {
                 }
             }
 
-            //ifs.close();
             errno = result;
         }
 
@@ -664,9 +661,7 @@ namespace azure {  namespace storage_lite {
                                 });
                         }
 
-                        std::istringstream in;
-                        in.rdbuf()->pubsetbuf(buffer, length);
-                        const auto blockResult = m_blobClient->upload_block_from_stream(container, blob, block_id, in).get();
+                        const auto blockResult = m_blobClient->upload_block_from_buffer(container, blob, block_id, buffer, length).get();
                         free(buffer);
 
                         {
@@ -680,7 +675,7 @@ namespace azure {  namespace storage_lite {
                         {
                             result = std::stoi(blockResult.error().code);
                             if (0 == result) {
-                                // It seems that timeouted requests has no code setup
+                                // It seems that timeout requests has no code setup
                                 result = 503;
                             }
                         }
@@ -697,8 +692,6 @@ namespace azure {  namespace storage_lite {
                 {
                     result = r;
                 }
-            }
-            if (0 != result) {
             }
             if(result == 0)
             {
