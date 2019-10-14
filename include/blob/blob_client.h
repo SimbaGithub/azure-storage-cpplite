@@ -119,7 +119,7 @@ namespace azure { namespace storage_lite {
         /// <param name="metadata">A <see cref="std::vector"> that respresents metadatas.</param>
         /// <param name="streamlen">Length of the stream. Used only when the stream does not support tellg/seekg</param>
         /// <returns>A <see cref="std::future" /> object that represents the current operation.</returns>
-        AZURE_STORAGE_API std::future<storage_outcome<void>> upload_block_blob_from_stream(const std::string &container, const std::string &blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata, size_t streamlen);
+        AZURE_STORAGE_API std::future<storage_outcome<void>> upload_block_blob_from_stream(const std::string &container, const std::string &blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata, unsigned long long streamlen);
 
 
         /// <summary>
@@ -205,7 +205,7 @@ namespace azure { namespace storage_lite {
         /// <param name="is">The source stream.</param>
         /// <param name="streamlen">Length of the stream. Used only when the stream does not support tellg/seekg</param>
         /// <returns>A <see cref="std::future" /> object that represents the current operation.</returns>
-        AZURE_STORAGE_API std::future<storage_outcome<void>> upload_block_from_stream(const std::string &container, const std::string &blob, const std::string &blockid, std::istream &is, size_t streamlen);
+        AZURE_STORAGE_API std::future<storage_outcome<void>> upload_block_from_stream(const std::string &container, const std::string &blob, const std::string &blockid, std::istream &is, unsigned long long streamlen);
 
         /// <summary>
         /// Intitiates an asynchronous operation  to upload a block of a blob from a char* buffer.
@@ -360,7 +360,7 @@ namespace azure { namespace storage_lite {
         /// </summary>
         /// <param name="account_name">The storage account name.</param>
         /// <param name="account_key">The storage account key.</param>
-    /// <param name="sas_token">A sas token for the container.</param>
+        /// <param name="sas_token">A sas token for the container.</param>
         /// <param name="concurrency">The maximum number requests could be executed in the same time.</param>
         /// <returns>Return a <see cref="azure::storage_lite::blob_client_wrapper"> object.</returns>
         static blob_client_wrapper blob_client_wrapper_init(const std::string &account_name, const std::string &account_key, const std::string &sas_token, const unsigned int concurrency);
@@ -370,7 +370,7 @@ namespace azure { namespace storage_lite {
         /// </summary>
         /// <param name="account_name">The storage account name.</param>
         /// <param name="account_key">The storage account key.</param>
-    /// <param name="sas_token">A sas token for the container.</param>
+        /// <param name="sas_token">A sas token for the container.</param>
         /// <param name="concurrency">The maximum number requests could be executed in the same time.</param>
         /// <param name="use_https">True if https should be used (instead of HTTP).  Note that this may cause a sizable perf loss, due to issues in libcurl.</param>
         /// <param name="blob_endpoint">Blob endpoint URI to allow non-public clouds as well as custom domains.</param>
@@ -435,7 +435,19 @@ namespace azure { namespace storage_lite {
         /// <param name="is">The source stream.</param>
         /// <param name="metadata">A <see cref="std::vector"> that respresents metadatas.</param>
         /// <param name="streamlen">Length of the stream. Used only when the stream does not support tellg/seekg</param>
-        void upload_block_blob_from_stream(const std::string &container, const std::string blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata = std::vector<std::pair<std::string, std::string>>(), size_t streamlen = NOT_USER_DEFINED_STREAMLEN);
+        void upload_block_blob_from_stream(const std::string &container, const std::string blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata = std::vector<std::pair<std::string, std::string>>(), unsigned long long streamlen = NOT_USER_DEFINED_STREAMLEN);
+
+        /// <summary>
+        /// Intitiates an asynchronous operation  to upload the contents of a blob from a stream.
+        /// </summary>
+        /// <param name="container">The container name.</param>
+        /// <param name="blob">The blob name.</param>
+        /// <param name="is">The source stream.</param>
+        /// <param name="metadata">A <see cref="std::vector"> that respresents metadatas.</param>
+        /// <param name="streamlen">Length of the stream. Used only when the stream does not support tellg/seekg</param>
+        /// <returns>A <see cref="std::future" /> object that represents the current operation.</returns>
+        /// <param name="parallel">A size_t value indicates the maximum parallelism can be used in this request.</param>
+        void multipart_upload_block_blob_from_stream(const std::string &container, const std::string blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata, unsigned long long streamlen, size_t parallel=8);
 
         /// <summary>
         /// Uploads the contents of a blob from a local file.
@@ -456,6 +468,17 @@ namespace azure { namespace storage_lite {
         /// <param name="size">The size of the data to download from the blob, in bytes.</param>
         /// <param name="os">The target stream.</param>
         void download_blob_to_stream(const std::string &container, const std::string &blob, unsigned long long offset, unsigned long long size, std::ostream &os);
+     
+        /// <summary>
+        /// Downloads and validates the specified chunk into a stringstream
+        /// </summary>
+        /// <param name="container">The container name.</param>
+        /// <param name="blob">The blob name.</param>
+        /// <param name="offset">The offset at which to begin downloading the blob, in bytes.</param>
+        /// <param name="size">The size of the data to download from the blob, in bytes.</param>
+        /// <param name="origEtag">This is the original etag which is compared across chuncks downloaded.</param>
+        /// <param name="str">The target stream to which chunk is downloaded.</param>
+        void get_chunk(const std::string &container, const std::string &blob, unsigned long long offset, unsigned long long size, std::string &origEtag, std::shared_ptr<std::stringstream> str);
 
         /// <summary>
         /// Downloads the contents of a blob to a local file.
@@ -506,7 +529,7 @@ namespace azure { namespace storage_lite {
         std::mutex s_mutex;
         unsigned int m_concurrency;
         bool m_valid;
-        static const size_t NOT_USER_DEFINED_STREAMLEN = ULLONG_MAX ;
+        static const unsigned long long NOT_USER_DEFINED_STREAMLEN = ULLONG_MAX ;
     };
 
 } } // azure::storage_lite

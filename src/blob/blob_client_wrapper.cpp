@@ -478,7 +478,7 @@ namespace azure {  namespace storage_lite {
                 std::string raw_block_id = std::to_string(idx);
                 //pad the string to length of 6.
                 raw_block_id.insert(raw_block_id.begin(), 12 - raw_block_id.length(), '0');
-		const std::string block_id(to_base64(reinterpret_cast<const unsigned char*>(block_id_un_base64.c_str()), block_id_un_base64.size()));
+                const std::string block_id(to_base64(reinterpret_cast<const unsigned char*>(raw_block_id.c_str()), raw_block_id.size()));
                 put_block_list_request_base::block_item block;
                 block.id = block_id;
                 block.type = put_block_list_request_base::block_type::uncommitted;
