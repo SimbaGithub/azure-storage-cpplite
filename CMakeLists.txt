@@ -3,14 +3,11 @@ cmake_minimum_required(VERSION 2.8)
 project(azurestoragelite)
 
 option(BUILD_TESTS "Build test codes" OFF)
-option(BUILD_SAMPLES "Build sample codes" OFF)
+option(BUILD_SAMPLES "Build sample codes" ON)
 option(FORCE_SHARED_CRT "If enabled, will unconditionally link the standard libraries in dynamically, otherwise the standard library will be linked in based on the BUILD_SHARED_LIBS setting" ON)
-
-set(OPENSSL_VERSION_NUMBER  0x11100000L)
-option(BUILD_TESTS       "Build test codes"                  OFF)
-option(BUILD_SAMPLES     "Build sample codes"                ON)
 option(BUILD_SHARED_LIBS "Request build of shared libraries" OFF)
 
+set(OPENSSL_VERSION_NUMBER  0x11100000L)
 set(AZURE_STORAGE_LITE_HEADER
   include/storage_EXPORTS.h
 
