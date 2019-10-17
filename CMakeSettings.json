@@ -3,7 +3,7 @@
     {
       "curlRootDir": "",
       "opensslRootDir": "",
-      "buildWithMT": "true", //true or false
+      "buildWithMT": "false", //true or false
       "buildSharedLibrary": "false", //true or false
       "buildTests": "true", //true or false
       "buildSamples": "true", //true or false
