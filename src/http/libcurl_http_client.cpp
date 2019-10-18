@@ -3,6 +3,7 @@
 #include "http/libcurl_http_client.h"
 
 #include "constants.h"
+#include "logging.h"
 
 namespace azure {  namespace storage_lite {
 
@@ -61,16 +62,13 @@ namespace azure {  namespace storage_lite {
             check_code(curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, m_slist));
 
             const auto result = curl_easy_perform(m_curl);
-	    long code = 0;
-	    curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &code);
-	    if (code != 200) {
-		printf("error: server responded with code %ld\n", code);
-	    }
+            /*
+             * Need further testing to add this.
+            if (result != 0) {
+                logger::log(log_level::error,"curl_easy_perform returned %d: %s\n", result, curl_easy_strerror(result));
+            }
+            */
             check_code(result); // has nothing to do with checks, just resets errno for succeeded ops.
-	    if (result != 0) {
-		printf("curl_easy_perform returned %d: %s\n", result, curl_easy_strerror(result));
-	    }
-
             return result;
         }
 
