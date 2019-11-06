@@ -347,7 +347,7 @@ namespace azure {  namespace storage_lite {
             }
         }
 
-        void blob_client_wrapper::upload_block_blob_from_stream(const std::string &container, const std::string blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata, unsigned long long streamlen)
+        void blob_client_wrapper::upload_block_blob_from_stream(const std::string &container, const std::string blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata, size_t streamlen)
         {
             if(!is_valid())
             {

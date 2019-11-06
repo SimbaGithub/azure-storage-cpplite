@@ -119,7 +119,7 @@ namespace azure { namespace storage_lite {
         /// <param name="metadata">A <see cref="std::vector"> that respresents metadatas.</param>
         /// <param name="streamlen">Length of the stream. Used only when the stream does not support tellg/seekg</param>
         /// <returns>A <see cref="std::future" /> object that represents the current operation.</returns>
-        AZURE_STORAGE_API std::future<storage_outcome<void>> upload_block_blob_from_stream(const std::string &container, const std::string &blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata, unsigned long long streamlen);
+        AZURE_STORAGE_API std::future<storage_outcome<void>> upload_block_blob_from_stream(const std::string &container, const std::string &blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata, size_t streamlen);
 
 
         /// <summary>
@@ -447,7 +447,7 @@ namespace azure { namespace storage_lite {
         /// <param name="streamlen">Length of the stream. Used only when the stream does not support tellg/seekg</param>
         /// <returns>A <see cref="std::future" /> object that represents the current operation.</returns>
         /// <param name="parallel">A size_t value indicates the maximum parallelism can be used in this request.</param>
-        AZURE_STORAGE_API multipart_upload_block_blob_from_stream(const std::string &container, const std::string blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata, unsigned long long streamlen, size_t parallel=8);
+        AZURE_STORAGE_API void multipart_upload_block_blob_from_stream(const std::string &container, const std::string blob, std::istream &is, const std::vector<std::pair<std::string, std::string>> &metadata, unsigned long long streamlen, size_t parallel=8);
 
         /// <summary>
         /// Uploads the contents of a blob from a local file.
