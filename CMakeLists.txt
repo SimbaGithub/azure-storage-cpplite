@@ -4,7 +4,7 @@ project(azurestoragelite)
 
 option(BUILD_TESTS "Build test codes" OFF)
 option(BUILD_SAMPLES "Build sample codes" ON)
-option(BUILD_WITH_MT "If enabled, will unconditionally link the standard libraries in dynamically, otherwise the standard library will be linked in based on the BUILD_SHARED_LIBS setting" ON)
+option(BUILD_WITH_MD "If enabled, will unconditionally link the standard libraries in dynamically, otherwise the standard library will be linked in based on the BUILD_SHARED_LIBS setting" OFF)
 option(BUILD_SHARED_LIBS "Request build of shared libraries" OFF)
 
 set(OPENSSL_VERSION_NUMBER  0x11100000L)
@@ -231,7 +231,8 @@ else()
   endif()
   add_definitions(-DUSE_OPENSSL)
   set(OPENSSL_MSVC_STATIC_RT "true")
-  if (BUILD_WITH_MT)
+  if (BUILD_WITH_MD)
+    # If BUILD_WITH_MD is off then we build with /MT option 
     set(CMAKE_CXX_FLAGS_RELEASE "/MT")
     set(CMAKE_CXX_FLAGS_DEBUG "/MT")
   else()
