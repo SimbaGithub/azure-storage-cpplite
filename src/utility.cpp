@@ -25,7 +25,7 @@ namespace azure {  namespace storage_lite {
         UUID uuid;
         UuidCreate(&uuid);
         char* uuid_cstr = nullptr;
-	UuidToStringA(&uuid, reinterpret_cast<RPC_CSTR*>(&uuid_cstr));
+        UuidToStringA(&uuid, reinterpret_cast<RPC_CSTR*>(&uuid_cstr));
         res = std::string(uuid_cstr);
         RpcStringFreeA(reinterpret_cast<RPC_CSTR*>(&uuid_cstr));
 #else

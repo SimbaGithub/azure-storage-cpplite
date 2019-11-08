@@ -12,10 +12,10 @@ namespace azure {  namespace storage_lite {
             m_curl(h),
             m_slist(NULL)
         {
-            m_input_content_length=0;
-            m_is_input_length_known =false;
             check_code(curl_easy_setopt(m_curl, CURLOPT_HEADERFUNCTION, header_callback));
             check_code(curl_easy_setopt(m_curl, CURLOPT_HEADERDATA, this));
+	     std::string capath = m_client->getCaPath();
+	     check_code(curl_easy_setopt(m_curl, CURLOPT_CAINFO, capath.c_str()));
         }
 
         CurlEasyRequest::~CurlEasyRequest()
@@ -62,12 +62,6 @@ namespace azure {  namespace storage_lite {
             check_code(curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, m_slist));
 
             const auto result = curl_easy_perform(m_curl);
-            /*
-             * Need further testing to add this.
-            if (result != 0) {
-                logger::log(log_level::error,"curl_easy_perform returned %d: %s\n", result, curl_easy_strerror(result));
-            }
-            */
             check_code(result); // has nothing to do with checks, just resets errno for succeeded ops.
             return result;
         }
