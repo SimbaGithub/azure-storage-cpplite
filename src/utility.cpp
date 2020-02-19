@@ -6,7 +6,6 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#include <filesystem>
 #else
 #include <uuid/uuid.h>
 #include <sys/stat.h>
@@ -42,15 +41,19 @@ namespace azure {  namespace storage_lite {
     bool create_or_resize_file(const std::string& path, unsigned long long length) noexcept
     {
 #ifdef _WIN32
-        try
-        {
-            std::experimental::filesystem::resize_file(path, static_cast<uintmax_t>(length));
-        }
-        catch (...)
+        HANDLE h_file = CreateFile(path.data(), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+        if (h_file == INVALID_HANDLE_VALUE)
         {
             return false;
         }
-        return true;
+
+        LARGE_INTEGER distance;
+        distance.QuadPart = length;
+        bool ret = SetFilePointerEx(h_file, distance, nullptr, FILE_BEGIN) && SetEndOfFile(h_file);
+
+        CloseHandle(h_file);
+        return ret;
 #else
         auto fd = open(path.c_str(), O_WRONLY, 0770);
         if (-1 == fd) {
