@@ -395,7 +395,9 @@ namespace azure {  namespace storage_lite {
                 return;
             }
 
-            off_t fileSize = streamlen;
+            // used to be off_t which was 4 bytes on Windows
+            // Change to long long to fix the issue with file size larger than 2GB
+            long long fileSize = streamlen;
             if(fileSize < 0)
             {
                 /*errno already set by get_file_size*/
